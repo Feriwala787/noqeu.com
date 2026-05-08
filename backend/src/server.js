@@ -27,7 +27,12 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/users', userRoutes);
 
-app.get('/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
+app.get('/', (_, res) => res.json({ name: 'NoQeu API', version: '1.0.0', status: 'running' }));
+app.get('/health', (_, res) => res.json({
+  status: 'ok',
+  timestamp: new Date(),
+  db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+}));
 
 app.use((err, req, res, _next) => {
   console.error(err);
@@ -36,13 +41,22 @@ app.use((err, req, res, _next) => {
 
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+// Start HTTP server immediately so Render health checks pass
+app.listen(PORT, () => console.log(`[SERVER] Running on port ${PORT}`));
+
+// Connect to MongoDB (retry-friendly)
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+    });
     console.log('[DB] Connected to MongoDB');
-    app.listen(PORT, () => console.log(`[SERVER] Running on port ${PORT}`));
     startReminderJob();
-  })
-  .catch((e) => {
+  } catch (e) {
     console.error('[DB] Connection failed:', e.message);
-    process.exit(1);
-  });
+    console.log('[DB] Retrying in 5s...');
+    setTimeout(connectDB, 5000);
+  }
+};
+
+connectDB();
