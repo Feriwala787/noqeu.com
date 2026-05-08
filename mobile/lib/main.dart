@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'services/api.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/owner_home_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -17,12 +18,10 @@ class AppUser extends ChangeNotifier {
   bool loading = true;
 
   Future<void> init() async {
-    loading = true;
-    notifyListeners();
+    loading = true; notifyListeners();
     final t = await Api.token;
     if (t != null) profile = await Api.getMe();
-    loading = false;
-    notifyListeners();
+    loading = false; notifyListeners();
   }
 
   Future<void> login(String phone, String password) async {
@@ -30,18 +29,15 @@ class AppUser extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> register(String phone, String password, {String? name}) async {
-    profile = await Api.register(phone, password, name: name);
+  Future<void> register({required String phone, required String password, required String name, required String role}) async {
+    profile = await Api.register(phone: phone, password: password, name: name, role: role);
     notifyListeners();
   }
 
-  Future<void> logout() async {
-    await Api.logout();
-    profile = null;
-    notifyListeners();
-  }
+  Future<void> logout() async { await Api.logout(); profile = null; notifyListeners(); }
 
   bool get loggedIn => profile != null;
+  bool get isOwner => profile?['role'] == 'owner' || profile?['isOwner'] == true;
 }
 
 class NoQeuApp extends StatefulWidget {
@@ -52,10 +48,7 @@ class NoQeuApp extends StatefulWidget {
 
 class _NoQeuAppState extends State<NoQeuApp> {
   @override
-  void initState() {
-    super.initState();
-    context.read<AppUser>().init();
-  }
+  void initState() { super.initState(); context.read<AppUser>().init(); }
 
   @override
   Widget build(BuildContext context) {
@@ -63,12 +56,11 @@ class _NoQeuAppState extends State<NoQeuApp> {
       title: 'NoQeu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: Consumer<AppUser>(
-        builder: (_, user, __) {
-          if (user.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-          return user.loggedIn ? const HomeScreen() : const LoginScreen();
-        },
-      ),
+      home: Consumer<AppUser>(builder: (_, user, __) {
+        if (user.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        if (!user.loggedIn) return const LoginScreen();
+        return user.isOwner ? const OwnerHomeScreen() : const HomeScreen();
+      }),
     );
   }
 }
