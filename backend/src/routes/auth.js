@@ -21,7 +21,8 @@ router.post('/send-otp', [body('phone').isMobilePhone()], async (req, res) => {
 
   // In production: send via Firebase Auth / Twilio
   console.log(`OTP for ${phone}: ${otp}`);
-  res.json({ message: 'OTP sent', ...(process.env.NODE_ENV !== 'production' && { otp }) });
+  // Always return OTP in response for now (remove after integrating Twilio/Firebase)
+  res.json({ message: 'OTP sent', otp });
 });
 
 // POST /api/auth/verify-otp
