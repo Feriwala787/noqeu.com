@@ -48,7 +48,43 @@ jobs:
           BUILD=$(echo $GITHUB_RUN_NUMBER)
           sed -i "s/^version: .*/version: ${VERSION}+${BUILD}/" mobile/pubspec.yaml
 
-      - name: Flutter pub get
+      - name: Generate launcher icons
+        run: |
+          node -e "
+          const fs = require('fs');
+          // Minimal 1x1 purple PNG (base64)
+          const sizes = {mdpi:48,hdpi:72,xhdpi:96,xxhdpi:144,xxxhdpi:192};
+          // Purple square PNG bytes generated via Buffer
+          const {createCanvas} = require('canvas') || {};
+          // Fallback: copy a pre-built minimal PNG
+          // We'll use a Node script to write raw PNG bytes
+          const PNG_HEADER = Buffer.from('89504e470d0a1a0a','hex');
+          " 2>/dev/null || true
+          # Use Python to generate simple PNG icons
+          python3 - <<'PYEOF'
+          import struct, zlib, os
+          def make_png(size, r, g, b):
+              def chunk(name, data):
+                  c = struct.pack('>I', len(data)) + name + data
+                  return c + struct.pack('>I', zlib.crc32(name + data) & 0xffffffff)
+              ihdr = struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)
+              raw = b''
+              for _ in range(size):
+                  row = b'\x00' + bytes([r, g, b] * size)
+                  raw += row
+              idat = zlib.compress(raw)
+              return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+          base = 'mobile/android/app/src/main/res'
+          for dpi, sz in sizes.items():
+              path = f'{base}/mipmap-{dpi}'
+              os.makedirs(path, exist_ok=True)
+              png = make_png(sz, 108, 99, 255)
+              open(f'{path}/ic_launcher.png','wb').write(png)
+              open(f'{path}/ic_launcher_round.png','wb').write(png)
+              print(f'Generated {dpi} {sz}x{sz}')
+          PYEOF
+
         working-directory: mobile
         run: flutter pub get
 
