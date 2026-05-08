@@ -45,24 +45,13 @@ jobs:
       - name: Update pubspec version
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          BUILD=$(echo $GITHUB_RUN_NUMBER)
-          sed -i "s/^version: .*/version: ${VERSION}+${BUILD}/" mobile/pubspec.yaml
+          sed -i "s/^version: .*/version: ${VERSION}+${GITHUB_RUN_NUMBER}/" mobile/pubspec.yaml
 
       - name: Generate launcher icons
         run: |
-          node -e "
-          const fs = require('fs');
-          // Minimal 1x1 purple PNG (base64)
-          const sizes = {mdpi:48,hdpi:72,xhdpi:96,xxhdpi:144,xxxhdpi:192};
-          // Purple square PNG bytes generated via Buffer
-          const {createCanvas} = require('canvas') || {};
-          // Fallback: copy a pre-built minimal PNG
-          // We'll use a Node script to write raw PNG bytes
-          const PNG_HEADER = Buffer.from('89504e470d0a1a0a','hex');
-          " 2>/dev/null || true
-          # Use Python to generate simple PNG icons
-          python3 - <<'PYEOF'
+          python3 - <<'EOF'
           import struct, zlib, os
+
           def make_png(size, r, g, b):
               def chunk(name, data):
                   c = struct.pack('>I', len(data)) + name + data
@@ -74,17 +63,19 @@ jobs:
                   raw += row
               idat = zlib.compress(raw)
               return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
-          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+
+          sizes = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
           base = 'mobile/android/app/src/main/res'
           for dpi, sz in sizes.items():
               path = f'{base}/mipmap-{dpi}'
               os.makedirs(path, exist_ok=True)
               png = make_png(sz, 108, 99, 255)
-              open(f'{path}/ic_launcher.png','wb').write(png)
-              open(f'{path}/ic_launcher_round.png','wb').write(png)
+              open(f'{path}/ic_launcher.png', 'wb').write(png)
+              open(f'{path}/ic_launcher_round.png', 'wb').write(png)
               print(f'Generated {dpi} {sz}x{sz}')
-          PYEOF
+          EOF
 
+      - name: Flutter pub get
         working-directory: mobile
         run: flutter pub get
 
@@ -120,10 +111,9 @@ jobs:
              mobile/build/app/outputs/flutter-apk/noqeu-v${VERSION}-x86_64.apk
 
       - name: Generate release notes
-        id: notes
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          cat <<EOF > release_notes.md
+          cat > release_notes.md << NOTES
           ## NoQeu v${VERSION} 📱
 
           **Stop Waiting, Start Living.**
@@ -140,14 +130,14 @@ jobs:
           ### Downloads
           | File | Architecture |
           |------|-------------|
-          | \`noqeu-v${VERSION}-arm64.apk\` | Most modern Android phones (recommended) |
+          | \`noqeu-v${VERSION}-arm64.apk\` | Modern Android phones (recommended) |
           | \`noqeu-v${VERSION}-arm32.apk\` | Older Android phones |
           | \`noqeu-v${VERSION}-x86_64.apk\` | Emulators / x86 devices |
           | \`noqeu-v${VERSION}-universal.apk\` | All devices (larger size) |
 
-          ### Backend
-          API: https://noqeu-backend.onrender.com
-          EOF
+          ### Backend API
+          https://noqeu-backend.onrender.com
+          NOTES
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
