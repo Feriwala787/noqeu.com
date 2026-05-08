@@ -6,7 +6,7 @@ import '../services/api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shop_card.dart';
 import 'shop_detail_screen.dart';
-import 'owner_screen.dart';
+import 'owner_home_screen.dart';
 import 'profile_screen.dart';
 import 'scan_screen.dart';
 
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('NoQeu', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                 const Spacer(),
                 if (user.profile?['isOwner'] == true)
-                  IconButton(icon: const Icon(Icons.store_outlined), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerScreen()))),
+                  IconButton(icon: const Icon(Icons.store_outlined), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerHomeScreen()))),
                 IconButton(icon: const Icon(Icons.person_outline), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))),
               ]),
             )),
