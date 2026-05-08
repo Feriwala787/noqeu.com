@@ -8,7 +8,7 @@ class SlotEstimate {
   final int seatsInService;
   final DateTime calculatedAt;
 
-  const SlotEstimate({
+  SlotEstimate({
     required this.expectedStart,
     required this.expectedEnd,
     required this.waitTimeMinutes,
@@ -28,7 +28,9 @@ class SlotEstimate {
       message: json['message'] as String?,
       peopleAhead: json['peopleAhead'] as int? ?? 0,
       seatsInService: json['seatsInService'] as int? ?? 1,
-      calculatedAt: json['calculatedAt'] == null ? DateTime.now() : DateTime.parse(json['calculatedAt'] as String),
+      calculatedAt: json['calculatedAt'] == null
+          ? DateTime.now()
+          : DateTime.parse(json['calculatedAt'] as String),
     );
   }
 
