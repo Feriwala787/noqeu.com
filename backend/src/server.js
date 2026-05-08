@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const admin = require('firebase-admin');
 
 const authRoutes = require('./routes/auth');
 const { router: shopRoutes } = require('./routes/shops');
@@ -13,24 +12,14 @@ const appointmentRoutes = require('./routes/appointments');
 const userRoutes = require('./routes/users');
 const { startReminderJob } = require('./jobs/reminders');
 
-// Initialize Firebase Admin SDK
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-} else {
-  // Fallback: initialize without credentials (firebase-login will fail gracefully)
-  admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'noqeu-640a4' });
-  console.warn('[FIREBASE] No service account JSON set — phone auth verification disabled');
-}
-
 const app = express();
 
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(morgan('combined'));
+app.use(morgan('short'));
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/', limiter);
 
 app.use('/api/auth', authRoutes);
@@ -39,11 +28,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/users', userRoutes);
 
 app.get('/', (_, res) => res.json({ name: 'NoQeu API', version: '1.0.0', status: 'running' }));
-app.get('/health', (_, res) => res.json({
-  status: 'ok',
-  timestamp: new Date(),
-  db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-}));
+app.get('/health', (_, res) => res.json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' }));
 
 app.use((err, req, res, _next) => {
   console.error(err);
@@ -51,23 +36,16 @@ app.use((err, req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
-// Start HTTP server immediately so Render health checks pass
 app.listen(PORT, () => console.log(`[SERVER] Running on port ${PORT}`));
 
-// Connect to MongoDB (retry-friendly)
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-    });
+    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
     console.log('[DB] Connected to MongoDB');
     startReminderJob();
   } catch (e) {
     console.error('[DB] Connection failed:', e.message);
-    console.log('[DB] Retrying in 5s...');
     setTimeout(connectDB, 5000);
   }
 };
-
 connectDB();

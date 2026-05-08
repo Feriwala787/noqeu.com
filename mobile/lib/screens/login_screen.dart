@@ -1,203 +1,119 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../providers/user_provider.dart';
-import '../services/api_service.dart';
+import '../main.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
   final _phoneCtrl = TextEditingController();
-  final _otpCtrl = TextEditingController();
-  final _apiService = ApiService();
-
-  String? _verificationId;
-  bool _otpSent = false;
+  final _passCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  bool _isRegister = false;
   bool _loading = false;
+  bool _obscure = true;
 
-  @override
-  void dispose() {
-    _phoneCtrl.dispose();
-    _otpCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendOtp() async {
+  Future<void> _submit() async {
     final phone = _phoneCtrl.text.trim();
-    if (phone.length < 10) {
-      _snack('Enter a valid phone number with country code (e.g. +91...)');
-      return;
-    }
+    final pass = _passCtrl.text.trim();
+    if (phone.length < 10) { _snack('Enter valid phone with country code'); return; }
+    if (pass.length < 6) { _snack('Password must be at least 6 characters'); return; }
+
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: phone,
-        timeout: const Duration(seconds: 60),
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification on Android
-          await _signIn(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          _snack(e.message ?? 'Verification failed');
-          setState(() => _loading = false);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          setState(() {
-            _verificationId = verificationId;
-            _otpSent = true;
-            _loading = false;
-          });
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
-      );
-    } catch (e) {
-      _snack('Error: $e');
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_verificationId == null) return;
-    final otp = _otpCtrl.text.trim();
-    if (otp.length != 6) { _snack('Enter 6-digit OTP'); return; }
-    setState(() => _loading = true);
-    try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otp,
-      );
-      await _signIn(credential);
-    } on FirebaseAuthException {
-      _snack('Invalid OTP. Please try again.');
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _signIn(PhoneAuthCredential credential) async {
-    final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
-    final idToken = await userCredential.user?.getIdToken();
-    if (idToken != null) {
-      await _apiService.firebaseLogin(idToken);
-      if (mounted) {
-        await context.read<UserProvider>().refreshJwt();
+      if (_isRegister) {
+        await context.read<AppUser>().register(phone, pass, name: _nameCtrl.text.trim());
+      } else {
+        await context.read<AppUser>().login(phone, pass);
       }
+    } catch (e) {
+      String msg = 'Something went wrong';
+      if (e.toString().contains('409')) msg = 'Phone already registered. Please login.';
+      if (e.toString().contains('401')) msg = 'Invalid phone or password';
+      _snack(msg);
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _snack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6C63FF), Color(0xFF9C8FFF)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.timer_outlined,
-                        color: Colors.white, size: 26),
-                  ),
-                  const SizedBox(width: 12),
-                  Text('NoQeu',
-                      style: theme.textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800)),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Text(
-                _otpSent ? 'Enter OTP' : 'Sign In',
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
+              const SizedBox(height: 60),
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFF9C8FFF)]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.timer_outlined, color: Colors.white, size: 34),
+              ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+              const SizedBox(height: 28),
+              Text(_isRegister ? 'Create Account' : 'Welcome Back',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800))
+                  .animate().fadeIn(delay: 200.ms),
               const SizedBox(height: 6),
-              Text(
-                _otpSent
-                    ? 'Code sent to ${_phoneCtrl.text}'
-                    : 'Enter your phone number to continue',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 32),
-              if (!_otpSent) ...[
+              Text(_isRegister ? 'Sign up to start using NoQeu' : 'Login to continue',
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15))
+                  .animate().fadeIn(delay: 300.ms),
+              const SizedBox(height: 36),
+              if (_isRegister) ...[
                 TextField(
-                  controller: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: '+91 98765 43210',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _loading ? null : _sendOtp,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Send OTP'),
-                ),
-              ] else ...[
-                TextField(
-                  controller: _otpCtrl,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(letterSpacing: 10),
-                  decoration: const InputDecoration(
-                    labelText: 'OTP Code',
-                    counterText: '',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _loading ? null : _verifyOtp,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Verify & Continue'),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () =>
-                      setState(() { _otpSent = false; _otpCtrl.clear(); }),
-                  child: const Text('Change number'),
-                ),
+                  controller: _nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'Your Name', prefixIcon: Icon(Icons.person_outline, color: AppTheme.primary)),
+                ).animate().fadeIn(delay: 350.ms),
+                const SizedBox(height: 14),
               ],
+              TextField(
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(hintText: '+91 98765 43210', prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primary)),
+              ).animate().fadeIn(delay: 400.ms),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _passCtrl,
+                obscureText: _obscure,
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primary),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textSecondary),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+              ).animate().fadeIn(delay: 450.ms),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _loading ? null : _submit,
+                child: _loading
+                    ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    : Text(_isRegister ? 'Sign Up' : 'Login'),
+              ).animate().fadeIn(delay: 500.ms),
+              const SizedBox(height: 20),
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() => _isRegister = !_isRegister),
+                  child: Text(
+                    _isRegister ? 'Already have an account? Login' : "Don't have an account? Sign Up",
+                    style: const TextStyle(color: AppTheme.primary),
+                  ),
+                ),
+              ).animate().fadeIn(delay: 600.ms),
+              const SizedBox(height: 40),
             ],
           ),
         ),

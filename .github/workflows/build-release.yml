@@ -50,8 +50,6 @@ jobs:
           VERSION=${{ steps.version.outputs.VERSION }}
           sed -i "s/^version: .*/version: ${VERSION}+${GITHUB_RUN_NUMBER}/" mobile/pubspec.yaml
 
-      - name: Copy google-services.json
-        run: cp google-services.json mobile/android/app/google-services.json
 
       - name: Generate launcher icons
         run: |
