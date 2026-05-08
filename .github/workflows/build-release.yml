@@ -11,6 +11,9 @@ on:
         required: true
         default: '1.0.0'
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build Flutter APK
@@ -46,6 +49,9 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           sed -i "s/^version: .*/version: ${VERSION}+${GITHUB_RUN_NUMBER}/" mobile/pubspec.yaml
+
+      - name: Copy google-services.json
+        run: cp google-services.json mobile/android/app/google-services.json
 
       - name: Generate launcher icons
         run: |
@@ -119,7 +125,7 @@ jobs:
           **Stop Waiting, Start Living.**
 
           ### What's included
-          - 🔒 OTP phone login
+          - 🔒 Firebase Phone OTP login
           - ⚡ One-tap token booking
           - ⏱️ Live countdown timer for your slot
           - 🏪 QR scan to discover shops
@@ -147,6 +153,7 @@ jobs:
           body_path: release_notes.md
           draft: false
           prerelease: false
+          make_latest: true
           files: |
             mobile/build/app/outputs/flutter-apk/noqeu-v${{ steps.version.outputs.VERSION }}-universal.apk
             mobile/build/app/outputs/flutter-apk/noqeu-v${{ steps.version.outputs.VERSION }}-arm64.apk

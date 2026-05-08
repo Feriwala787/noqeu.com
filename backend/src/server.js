@@ -5,12 +5,23 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const admin = require('firebase-admin');
 
 const authRoutes = require('./routes/auth');
 const { router: shopRoutes } = require('./routes/shops');
 const appointmentRoutes = require('./routes/appointments');
 const userRoutes = require('./routes/users');
 const { startReminderJob } = require('./jobs/reminders');
+
+// Initialize Firebase Admin SDK
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+} else {
+  // Fallback: initialize without credentials (firebase-login will fail gracefully)
+  admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'noqeu-640a4' });
+  console.warn('[FIREBASE] No service account JSON set — phone auth verification disabled');
+}
 
 const app = express();
 

@@ -9,6 +9,7 @@ void main() {
     final appt = Appointment(
       id: 'a1',
       shopId: 's1',
+      tokenNumber: 1,
       slotStart: now.add(const Duration(minutes: 25)),
       slotEnd: now.add(const Duration(minutes: 55)),
       status: 'Pending',

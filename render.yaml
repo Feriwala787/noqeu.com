@@ -14,5 +14,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY_PATH
+        sync: false
     healthCheckPath: /health
     autoDeploy: true
