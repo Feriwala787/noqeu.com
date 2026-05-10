@@ -55,9 +55,10 @@ class Api {
   static Future<List<dynamic>> getShopQueue(String id) async { await _setAuth(); return (await _dio.get('/shops/$id/queue')).data as List; }
 
   // Appointments
-  static Future<Map<String, dynamic>> book(String shopId) async { await _setAuth(); final r = await _dio.post('/appointments/book', data: {'shopId': shopId}); return (r.data['appointment'] ?? r.data) as Map<String, dynamic>; }
+  static Future<Map<String, dynamic>> book(String shopId, {bool isWalkIn = false}) async { await _setAuth(); final r = await _dio.post('/appointments/book', data: {'shopId': shopId, 'isWalkIn': isWalkIn}); return (r.data['appointment'] ?? r.data) as Map<String, dynamic>; }
   static Future<void> cancel(String id) async { await _setAuth(); await _dio.put('/appointments/$id/action', data: {'action': 'Cancelled'}); }
-  static Future<Map<String, dynamic>> addWalkIn(String shopId) async { await _setAuth(); final r = await _dio.post('/appointments/offline', data: {'shopId': shopId}); return (r.data['appointment'] ?? r.data) as Map<String, dynamic>; }
+  static Future<Map<String, dynamic>> addWalkIn(String shopId) async { await _setAuth(); final r = await _dio.post('/appointments/book', data: {'shopId': shopId, 'isWalkIn': true}); return (r.data['appointment'] ?? r.data) as Map<String, dynamic>; }
   static Future<void> ownerAction(String id, String action) async { await _setAuth(); await _dio.put('/appointments/$id/action', data: {'action': action}); }
   static Future<List<dynamic>> getMyAppointments() async { await _setAuth(); return (await _dio.get('/appointments/my')).data as List; }
+  static Future<Map<String, dynamic>?> getActiveToken() async { await _setAuth(); final r = await _dio.get('/appointments/active'); return r.data as Map<String, dynamic>?; }
 }
