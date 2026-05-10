@@ -37,8 +37,6 @@ class ShopQrScreen extends StatelessWidget {
                   version: QrVersions.auto,
                   size: 220,
                   backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.roundedOuter, color: Color(0xFF1A1A2E)),
-                  dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.roundedOutsideCorners, color: Color(0xFF1A1A2E)),
                 ),
               ),
               const SizedBox(height: 24),
