@@ -6,6 +6,7 @@ import '../main.dart';
 import '../services/api.dart';
 import '../theme/app_theme.dart';
 import 'setup_shop_screen.dart';
+import 'shop_qr_screen.dart';
 import 'profile_screen.dart';
 
 class OwnerHomeScreen extends StatefulWidget {
@@ -88,6 +89,7 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
           Text(_shop!['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           Text(_shop!['occupation'] ?? '', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
         ])),
+        IconButton(icon: const Icon(Icons.qr_code), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShopQrScreen(shop: _shop!)))),
         IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () async { await Navigator.push(context, MaterialPageRoute(builder: (_) => SetupShopScreen(shop: _shop))); _loadShops(); }),
         IconButton(icon: const Icon(Icons.person_outline), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()))),
       ]))),
